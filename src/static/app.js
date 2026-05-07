@@ -14,17 +14,32 @@ document.addEventListener("DOMContentLoaded", () => {
       activitiesList.innerHTML = "";
 
       // Populate activities list
+      // Reset activity list and dropdown options each time we refresh
+      activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
+
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
+        const participantsHtml = details.participants.length
+          ? `
+            <div class="participants">
+              <strong>Participants:</strong>
+              <ul>
+                ${details.participants.map((email) => `<li>${email} <span class="delete-icon" data-email="${email}" data-activity="${name}">×</span></li>`).join("")}
+              </ul>
+            </div>
+          `
+          : `<p class="no-participants">No participants yet</p>`;
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHtml}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -83,4 +99,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+});
+
+// Event listener for delete icons
+document.addEventListener('click', async (event) => {
+  if (event.target.classList.contains('delete-icon')) {
+    const email = event.target.dataset.email;
+    const activity = event.target.dataset.activity;
+
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        fetchActivities(); // Refresh the activities list
+      } else {
+        alert('Failed to unregister participant');
+      }
+    } catch (error) {
+      console.error('Error unregistering:', error);
+    }
+  }
 });
